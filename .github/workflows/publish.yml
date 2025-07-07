@@ -1,0 +1,36 @@
+name: Publish to Maven Central
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  publish:
+    name: Publish Library
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Publish with Gradle
+        run: |
+          TAG_NAME=""
+          VERSION_NAME=""
+
+          ./gradlew :library:publishAndReleaseToMavenCentral --no-configuration-cache --no-daemon \
+            -PversionName="${GITHUB_REF##*/v}" \
+            -Psigning.keyId=${{ secrets.SIGNING_KEY_ID }} \
+            -PmavenCentralUsername=${{ secrets.MAVEN_CENTRAL_USERNAME }} \
+            -PmavenCentralPassword=${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+        env:
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+          SIGNING_PASSWORD: ${{ secrets.SIGNING_PASSWORD }}
+
