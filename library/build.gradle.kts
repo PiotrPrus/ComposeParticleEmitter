@@ -1,7 +1,15 @@
+import com.vanniktech.maven.publish.SonatypeHost
+import java.util.Base64
+
+
+val VERSION_NAME = project.findProperty("versionName") as? String ?: "undefined"
+
 plugins {
+    id("maven-publish")
     alias(libs.plugins.android.library)
     alias(libs.plugins.jetbrains.kotlin.android)
-    id("io.deepmedia.tools.deployer") version "0.13.0"
+    alias(libs.plugins.vanniktech.maven.publish)
+
 }
 
 android {
@@ -42,37 +50,67 @@ android {
     }
 }
 
-deployer {
-    // 1. Artifact definition.
-    // https://opensource.deepmedia.io/deployer/artifacts
-    content {
-        kotlinComponents()
-    }
-
-    // 2. Project details.
-    // https://opensource.deepmedia.io/deployer/configuration
-    projectInfo {
-        description = "A lightweight library to play with canvas particle emitter"
-        url = "https://github.com/PiotrPrus/ComposeParticleEmitter"
-        scm.fromGithub("PiotrPrus", "ComposeParticleEmitter")
-        license(apache2)
-        developer("PiotrPrus", "prus.piotr@gmail.com", "PiotrPrus", "https://github.com")
-        groupId = "dev.piotrprus"
-    }
-
-    // 3. Central Portal configuration.
-    // https://opensource.deepmedia.io/deployer/repos/central-portal
-    centralPortalSpec {
-        signing.key = secret("SIGNING_KEY")
-        signing.password = secret("SIGNING_PASSPHRASE")
-        auth.user = secret("UPLOAD_USERNAME")
-        auth.password = secret("UPLOAD_PASSWORD")
-    }
-}
-
 dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.foundation)
 }
+
+mavenPublishing {
+    publishToMavenCentral(SonatypeHost.CENTRAL_PORTAL)
+
+    signAllPublications()
+
+    coordinates(
+        groupId = "dev.piotrprus",
+        artifactId = "compose-particle-emitter",
+        version = VERSION_NAME
+    )
+
+    pom {
+        name = "Compose Particle Emitter"
+        description = "A lightweight library to play with canvas particle emitter"
+        inceptionYear = "2025"
+        url = "https://github.com/PiotrPrus/ComposeParticleEmitter"
+        licenses {
+            license {
+                name = "The Apache License, Version 2.0"
+                url = "https://www.apache.org/licenses/LICENSE-2.0.txt"
+                distribution = "repo"
+            }
+        }
+        developers {
+            developer {
+                id = "PiotrPrus"
+                name = "Piotr Prus"
+                url = "https://github.com/PiotrPrus"
+            }
+        }
+        scm {
+            url = "https://github.com/PiotrPrus/ComposeParticleEmitter"
+            connection = "scm:git:git://github.com/PiotrPrus/ComposeParticleEmitter.git"
+            developerConnection = "scm:git:ssh://github.com/PiotrPrus/ComposeParticleEmitter.git"
+        }
+    }
+}
+
+
+
+afterEvaluate {
+    extensions.findByType(org.gradle.plugins.signing.SigningExtension::class.java)?.apply {
+        val key = System.getenv("SIGNING_KEY")
+        val password = System.getenv("SIGNING_PASSWORD")
+
+        if (!key.isNullOrBlank() && !password.isNullOrBlank()) {
+            val decodedKey = try {
+                String(Base64.getDecoder().decode(key))
+            } catch (e: IllegalArgumentException) {
+                key
+            }
+
+            useInMemoryPgpKeys(decodedKey, password)
+        }
+    }
+}
+
